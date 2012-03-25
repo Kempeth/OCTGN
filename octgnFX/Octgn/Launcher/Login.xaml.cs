@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using System.Speech.Synthesis;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -22,9 +26,22 @@ namespace Octgn.Launcher
         private bool isLoggingIn = false;
         private Timer LoginTimer;
 
+        public void DoSpeach()
+        {
+            var shaker = "";
+            shaker = Properties.Resources.shakespear;
+            var voice = new SpeechSynthesizer();
+            voice.Rate = -3;
+            var voices = voice.GetInstalledVoices();
+            voice.Volume = 50;
+            voice.SpeakAsync(shaker);
+        }
+
         public Login()
         {
+            
             InitializeComponent();
+            DoSpeach();
             if (Program.lobbyClient != null)
             {
                 Program.lobbyClient.Stop();
