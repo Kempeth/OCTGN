@@ -141,10 +141,10 @@ namespace Octgn.Data
              * +- // cards (via game.game_id)
              * +- custom_properties (via game.game_id)
              * +- // markers (via game.game_id)
-             * +- sets (via game.real_id)
-             *    +- cards (via set.real_id)
-             *    +- packs (via set.real_id)
-             *    +- markers (via set.real_id)
+             * +- sets (via game.real_id) (CASCADE)
+             *    +- cards (via set.real_id) (CASCADE)
+             *    +- packs (via set.real_id) (CASCADE)
+             *    +- markers (via set.real_id) (CASCADE)
              */
             
             // If game doesn't exist, abort
@@ -154,68 +154,6 @@ namespace Octgn.Data
             try
             {
                 trans = DatabaseConnection.BeginTransaction();
-                
-                #region remove the cards from the database
-                using (SQLiteCommand com = DatabaseConnection.CreateCommand())
-                {
-                    //Build Query
-                    com.CommandText = 
-@"DELETE FROM [cards]
-WHERE [set_real_id]=(
-    SELECT [real_id] FROM [sets] WHERE [game_real_id]=(
-        SELECT [real_id] FROM [games] WHERE [id]=@id
-    )
-);";
-                    com.Parameters.AddWithValue("@id", game.Id.ToString());
-                    com.ExecuteNonQuery();
-                }
-                #endregion
-                
-                #region remove the packs from the database
-                using (SQLiteCommand com = DatabaseConnection.CreateCommand())
-                {
-                    //Build Query
-                    com.CommandText = 
-@"DELETE FROM [packs]
-WHERE [set_real_id]=(
-    SELECT [real_id] FROM [sets] WHERE [game_real_id]=(
-        SELECT [real_id] FROM [games] WHERE [id]=@id
-    )
-);";
-                    com.Parameters.AddWithValue("@id", game.Id.ToString());
-                    com.ExecuteNonQuery();
-                }
-                #endregion
-                
-                #region remove the markers from the database
-                using (SQLiteCommand com = DatabaseConnection.CreateCommand())
-                {
-                    //Build Query
-                    com.CommandText = 
-@"DELETE FROM [markers]
-WHERE [set_real_id]=(
-    SELECT [real_id] FROM [sets] WHERE [game_real_id]=(
-        SELECT [real_id] FROM [games] WHERE [id]=@id
-    )
-);";
-                    com.Parameters.AddWithValue("@id", game.Id.ToString());
-                    com.ExecuteNonQuery();
-                }
-                #endregion
-                
-                #region remove the sets from the database
-                using (SQLiteCommand com = DatabaseConnection.CreateCommand())
-                {
-                    //Build Query
-                    com.CommandText =
-@"DELETE FROM [sets]
-WHERE [game_real_id]=(
-    SELECT [real_id] FROM [games] WHERE [id]=@id
-);";
-                    com.Parameters.AddWithValue("@id", game.Id.ToString());
-                    com.ExecuteNonQuery();
-                }
-                #endregion
                 
                 #region remove the custom properties from the database
                 using (SQLiteCommand com = DatabaseConnection.CreateCommand())
@@ -237,17 +175,8 @@ WHERE [game_real_id]=(
                 }
                 #endregion
                 
-                #region remove obsolete columns from the cards table
-                // In order to remove a column the table would have to be rebuilt like this: (source: sqlite website)
-                //BEGIN TRANSACTION;
-                //CREATE TEMPORARY TABLE t1_backup(a,b);
-                //INSERT INTO t1_backup SELECT a,b FROM t1;
-                //DROP TABLE t1;
-                //CREATE TABLE t1(a,b);
-                //INSERT INTO t1 SELECT a,b FROM t1_backup;
-                //DROP TABLE t1_backup;
-                //COMMIT;
-                #endregion
+                //remove obsolete columns from the cards table
+                DatabaseHandler.RebuildCardsTable(DatabaseConnection);
                 
                 trans.Commit();
             }
