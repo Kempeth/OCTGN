@@ -100,7 +100,8 @@ namespace Octgn.Data
 
         public event EventHandler GameInstalled;
         public event EventHandler<EventArgs<Game>> GameUninstalled;
-
+
+
         
         /// <summary>
         /// Raises the GameUninstalled event if any listeners are attached.
@@ -234,6 +235,18 @@ WHERE [game_real_id]=(
                     com.Parameters.AddWithValue("@id", game.Id.ToString());
                     com.ExecuteNonQuery();
                 }
+                #endregion
+                
+                #region remove obsolete columns from the cards table
+                // In order to remove a column the table would have to be rebuilt like this: (source: sqlite website)
+                //BEGIN TRANSACTION;
+                //CREATE TEMPORARY TABLE t1_backup(a,b);
+                //INSERT INTO t1_backup SELECT a,b FROM t1;
+                //DROP TABLE t1;
+                //CREATE TABLE t1(a,b);
+                //INSERT INTO t1 SELECT a,b FROM t1_backup;
+                //DROP TABLE t1_backup;
+                //COMMIT;
                 #endregion
                 
                 trans.Commit();
@@ -387,15 +400,6 @@ WHERE [id]=@id;";
                     trans.Rollback();
                 if (Debugger.IsAttached) Debugger.Break();
                 return;
-                /*
-   bei System.Data.SQLite.SQLite3.Prepare(SQLiteConnection cnn, String strSql, SQLiteStatement previous, UInt32 timeoutMS, String& strRemain) in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLite3.cs:Zeile 476.
-   bei System.Data.SQLite.SQLiteCommand.BuildNextCommand() in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteCommand.cs:Zeile 294.
-   bei System.Data.SQLite.SQLiteCommand.GetStatement(Int32 index) in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteCommand.cs:Zeile 306.
-   bei System.Data.SQLite.SQLiteDataReader.NextResult() in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteDataReader.cs:Zeile 1146.
-   bei System.Data.SQLite.SQLiteDataReader..ctor(SQLiteCommand cmd, CommandBehavior behave) in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteDataReader.cs:Zeile 103.
-   bei System.Data.SQLite.SQLiteCommand.ExecuteReader(CommandBehavior behavior) in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteCommand.cs:Zeile 592.
-   bei System.Data.SQLite.SQLiteCommand.ExecuteNonQuery() in c:\dev\sqlite\dotnet\System.Data.SQLite\SQLiteCommand.cs:Zeile 622.
-   bei Octgn.Data.GamesRepository.InstallGame(Game game, IEnumerable`1 properties) in c:\Users\dschachtler\Documents\SharpDevelop Projects\OCTGN\octgnFX\Octgn.Data\GamesRepository.cs:Zeile 330."                 */
             }
             existingGame = _cachedGames.FirstOrDefault(g => g.Id == game.Id);
             if (existingGame != null) _cachedGames.Remove(existingGame);
