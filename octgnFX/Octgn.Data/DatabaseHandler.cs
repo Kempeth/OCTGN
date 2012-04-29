@@ -136,9 +136,8 @@ namespace Octgn.Data
             
             using (SQLiteCommand com = connection.CreateCommand())
             {
-                com.CommandText = @"SELECT * FROM [custom_properties] WHERE game_id LIKE '@game_id'";
+                com.CommandText = "SELECT * FROM [custom_properties] WHERE [game_id] LIKE @game_id;";
                 com.Parameters.AddWithValue("@game_id", game.ToString());
-                com.Prepare();
                 using (SQLiteDataReader reader = com.ExecuteReader())
                 {
                     while (reader.Read())
