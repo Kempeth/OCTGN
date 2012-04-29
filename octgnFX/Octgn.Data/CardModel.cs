@@ -94,9 +94,11 @@ namespace Octgn.Data
                             Properties.Add(prop.Name, reader.Value);
                             break;
                         case PropertyType.Integer:
+                            if (String.IsNullOrEmpty(reader.Value)) break;
                             Properties.Add(prop.Name, Int32.Parse(reader.Value));
                             break;
                         case PropertyType.Char:
+                            if (String.IsNullOrEmpty(reader.Value)) break;
                             Properties.Add(prop.Name, Char.Parse(reader.Value));
                             break;
                         default:
