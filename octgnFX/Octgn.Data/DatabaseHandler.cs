@@ -33,54 +33,17 @@ namespace Octgn.Data
             return (columnCache[tableName].Contains(columnName));
         }
 
-        public static bool AddColumn(string tableName, string columnName, PropertyType type, SQLiteConnection connection)
-        {
-            bool ret = false;
-
-            using (SQLiteCommand com = connection.CreateCommand())
-            {
-                //YES I AM USING A STRINGBUILDER BECAUSE SQLITE WAS BEING A FUCKER. CHANGE IT IF YOU CAN MAKE IT WORK >_<
-                //BLOODY PARAMETERS FUCKING UP CONSTANTLY. SQLITE IS SHIT IN MY OPINION </endrage>
-                //TODO: Find out why ALTER commands do not always play nice with sqlitecommand parameters.
-                StringBuilder sb = new StringBuilder("ALTER TABLE @tablename ADD [@columnname] @type DEFAULT '@default'");
-                sb = sb.Replace("@tablename", tableName);
-                sb = sb.Replace("@columnname", columnName);
-                switch (type)
-                {
-                    case PropertyType.String:
-                        sb = sb.Replace("@type", "TEXT");
-                        sb = sb.Replace("@default", "");
-                        break;
-                    case PropertyType.Integer:
-                        sb = sb.Replace("@type", "INTEGER");
-                        sb = sb.Replace("@default", "");
-                        break;
-                    case PropertyType.GUID:
-                        sb = sb.Replace("@type", "TEXT");
-                        sb = sb.Replace("@default", "00000000-0000-0000-0000-000000000000");
-                        break;
-                    default:
-                        sb = sb.Replace("@type", "TEXT");
-                        sb = sb.Replace("@default", "");
-                        break;
-                }
-                com.CommandText = sb.ToString();
-                com.ExecuteNonQuery();
-            }
-
-            ret = ColumnExists(tableName, columnName, connection);
-            return (ret);
-        }
-    
+        /// <summary>
+        /// Rebuilds the [cards] table to only include the columns specified in the [custom_properties] table.
+        /// </summary>
+        /// <param name="connection">The connection to use</param>
         public static void RebuildCardsTable(SQLiteConnection connection)
         {
-            #region Find out what properties are left
+            #region Find out what properties are registered
             Dictionary<string, int> properties = new Dictionary<string, int>();
             using (SQLiteCommand com = connection.CreateCommand())
             {
-                // must be reverse order to maintain configuration in case of conflicting property definitions.
-                // i.e. [Power] INTEGER followed by [Power] TEXT
-                com.CommandText = @"SELECT * FROM [custom_properties] ORDER BY [real_id] DESC";
+                com.CommandText = @"SELECT * FROM [custom_properties]";
                 com.Prepare();
                 using (SQLiteDataReader reader = com.ExecuteReader())
                 {
@@ -90,7 +53,11 @@ namespace Octgn.Data
                     {
                         string propertyName = reader.GetString(columnOrdinalName);
                         int propertyType = reader.GetInt32(columnOrdinalType);
-                        properties[propertyName] = propertyType;
+                        
+                        if (!properties.ContainsKey(propertyName))
+                        {
+                            properties[propertyName] = propertyType;
+                        }
                     }
                 }
             }
@@ -110,7 +77,9 @@ namespace Octgn.Data
   [dependent] TEXT");
             
             StringBuilder sqlCopy = new StringBuilder();
-            sqlCopy.Append("INSERT INTO [new_cards] SELECT [real_id], [id], [game_id], [set_real_id], [name], [image], [alternate], [dependent]");
+            StringBuilder sqlCopy2 = new StringBuilder();
+            sqlCopy.Append("INSERT INTO [new_cards] ([real_id], [id], [game_id], [set_real_id], [name], [image], [alternate], [dependent]");
+            sqlCopy2.Append(") SELECT [real_id], [id], [game_id], [set_real_id], [name], [image], [alternate], [dependent]");
             
             foreach (String name in properties.Keys)
             {
@@ -119,9 +88,15 @@ namespace Octgn.Data
                                                   name,
                                                   properties[name] == 1 ? "INTEGER" : "TEXT",
                                                   ""));
-                sqlCopy.Append(String.Format(", [{0}]", name));
+                if (ColumnExists("cards", name, connection))
+                {
+                    // only copy columns that already exist
+                    sqlCopy.Append(String.Format(", [{0}]", name));
+                    sqlCopy2.Append(String.Format(", [{0}]", name));
+                }
             }
             sqlCreate.Append("\n);");
+            sqlCopy.Append(sqlCopy2.ToString());
             sqlCopy.Append(" FROM [cards];");
             #endregion
             
@@ -147,6 +122,33 @@ namespace Octgn.Data
                 comRename.ExecuteNonQuery();
             }
             #endregion
+        }
+        
+        /// <summary>
+        /// Returns a list of all column names registered with the specified game.
+        /// </summary>
+        /// <param name="game">The guid of the game</param>
+        /// <param name="connection">the connection to use</param>
+        /// <returns>A list of column names.</returns>
+        public static IList<String> GetCardProperties(Guid game, SQLiteConnection connection)
+        {
+            List<String> properties = new List<string>();
+            
+            using (SQLiteCommand com = connection.CreateCommand())
+            {
+                com.CommandText = @"SELECT * FROM [custom_properties] WHERE game_id LIKE '@game_id'";
+                com.Parameters.AddWithValue("@game_id", game.ToString());
+                com.Prepare();
+                using (SQLiteDataReader reader = com.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        properties.Add(reader.GetString(reader.GetOrdinal("name")));
+                    }
+                }
+            }
+            
+            return properties;
         }
     }
 }

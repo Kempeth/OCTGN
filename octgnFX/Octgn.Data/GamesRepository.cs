@@ -290,11 +290,6 @@ WHERE [id]=@id;";
 );";
                 foreach (PropertyDef pair in properties)
                 {
-                    if (!DatabaseHandler.ColumnExists("cards", pair.Name, DatabaseConnection))
-                    {
-                        DatabaseHandler.AddColumn("cards", pair.Name, pair.Type, DatabaseConnection);
-                    }
-
                     using (SQLiteCommand com = DatabaseConnection.CreateCommand())
                     {
                         com.CommandText = command;
@@ -319,6 +314,8 @@ WHERE [id]=@id;";
                         com.ExecuteNonQuery();
                     }
                 }
+                
+                DatabaseHandler.RebuildCardsTable(DatabaseConnection);
                 #endregion
                 
                 trans.Commit();

@@ -437,33 +437,33 @@ namespace Octgn.Data
             fields.Append("[id],[game_id],[set_real_id],[name],[image],[alternate],[dependent]");
             values.Append("@id,@game_id,(SELECT real_id FROM sets WHERE id = @set_id LIMIT 1),@name,@image,@alternate,@dependent");
 
+            IList<string> columns = DatabaseHandler.GetCardProperties(this.Id, GamesRepository.DatabaseConnection);
+            
             foreach (KeyValuePair<string, object> pair in card.Properties)
             {
-                fields.Append(string.Format(",[{0}]", pair.Key));
-                values.Append(string.Format(",@{0}", pair.Key.Replace(" ", "")));
-
-                string name = pair.Key;
-                PropertyType type = PropertyType.String;
-                object value = "";
-                if (pair.Value is string)
+                if (columns.Contains(pair.Key))
                 {
-                    type = PropertyType.String;
-                    value = (string)pair.Value;
-                }
-                else if (pair.Value is int)
-                {
-                    type = PropertyType.Integer;
-                    value = (int)pair.Value;
-                }
-                else
-                {
-                    type = PropertyType.String;
-                    value = (string)pair.Value;
-                }
-
-                if (!DatabaseHandler.ColumnExists("cards", name, GamesRepository.DatabaseConnection))
-                {
-                    DatabaseHandler.AddColumn("cards", name, type, GamesRepository.DatabaseConnection);
+                    fields.Append(string.Format(",[{0}]", pair.Key));
+                    values.Append(string.Format(",@{0}", pair.Key.Replace(" ", "")));
+    
+                    string name = pair.Key;
+                    PropertyType type = PropertyType.String;
+                    object value = "";
+                    if (pair.Value is string)
+                    {
+                        type = PropertyType.String;
+                        value = (string)pair.Value;
+                    }
+                    else if (pair.Value is int)
+                    {
+                        type = PropertyType.Integer;
+                        value = (int)pair.Value;
+                    }
+                    else
+                    {
+                        type = PropertyType.String;
+                        value = (string)pair.Value;
+                    }
                 }
             }
 
